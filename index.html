@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -33,8 +33,8 @@ const firebaseConfig = {
   projectId: "tousei-a9858",
   storageBucket: "tousei-a9858.firebasestorage.app",
   messagingSenderId: "967253767952",
-  appId: "1:967253767952:web:a779e0ced6238be4df9795",
-  measurementId: "G-867V1GJ9B5"
+  appId: "1:967253767952:web:f4eeaed56aa2e737df9795",
+  measurementId: "G-6MP9F75G8X"
 };
 
 // Initialize Firebase
@@ -44,9 +44,10 @@ const firebaseConfig = {
   apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
   authDomain: "tousei-a9858.firebaseapp.com",
   projectId: "tousei-a9858",
-  storageBucket: "tousei-a9858.firebasestorage.app",
+  storageBucket: "tousei-a9858.appspot.com",
   messagingSenderId: "967253767952",
   appId: "1:967253767952:web:a779e0ced6238be4df9795",
+  measurementId: "G-867V1GJ9B5"
 };
 
 // Firebase初期化
@@ -54,31 +55,28 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // 投稿関数
-async function send(){
+async function send() {
   const name = document.getElementById("name").value;
   const text = document.getElementById("text").value;
-  if(name=="" || text==""){
+  if(name === "" || text === "") {
     alert("名前と投稿を入力してください");
     return;
   }
-  await addDoc(collection(db,"posts"),{
-    name: name,
-    text: text
-  });
-  document.getElementById("name").value="";
-  document.getElementById("text").value="";
+  await addDoc(collection(db,"posts"), { name, text });
+  document.getElementById("name").value = "";
+  document.getElementById("text").value = "";
   alert("投稿しました");
   load();
 }
 
 // 投稿一覧を読み込む
-async function load(){
-  document.getElementById("posts").innerHTML="";
+async function load() {
+  document.getElementById("posts").innerHTML = "";
   const querySnapshot = await getDocs(collection(db,"posts"));
-  querySnapshot.forEach((doc)=>{
+  querySnapshot.forEach((doc) => {
     const data = doc.data();
     document.getElementById("posts").innerHTML +=
-      "<p><b>"+data.name+"</b> : "+data.text+"</p>";
+      "<p><b>" + data.name + "</b> : " + data.text + "</p>";
   });
 }
 
