@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>1等星</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js"></script>
+
+<script>
+  // 🔹 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyA5qm6pckUAEWFwnPY4qIuw8OF-eT8PDwU",
+  authDomain: "tousei-967f1.firebaseapp.com",
+  projectId: "tousei-967f1",
+  storageBucket: "tousei-967f1.firebasestorage.app",
+  messagingSenderId: "647492775604",
+  appId: "1:647492775604:web:c015b56c7c2f91d15e31e1",
+  measurementId: "G-WFV5SKX768"
+};
+  const firebaseConfig = {
+    apiKey: "AIzaSyA5qm6pckUAEWFwnPY4qIuw8OF-eT8PDwU",
+    authDomain: "tousei-967f1.firebaseapp.com",
+    projectId: "tousei-967f1",
+    storageBucket: "tousei-967f1.firebasestorage.app",
+    messagingSenderId: "647492775604",
+    appId: "1:647492775604:web:c015b56c7c2f91d15e31e1",
+  };
+
+  // Firebase 初期化
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+
+<style>
+body{
+  background:#111;
+  color:white;
+  font-family:sans-serif;
+  text-align:center;
+}
+
+input,button{
+  padding:10px;
+  margin:5px;
+  font-size:16px;
+}
+
+.post{
+  background:#222;
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>⭐1等星 掲示板</h1>
+
+<input id="name" placeholder="名前">
+<br>
+<input id="msg" placeholder="メッセージ">
+<br>
+<button onclick="send()">投稿</button>
+
+<div id="board"></div>
+
+<script>
+// 投稿処理
+function send(){
+  let name = document.getElementById("name").value;
+  let msg = document.getElementById("msg").value;
+  if(!name || !msg) return;
+
+  db.collection("posts").add({name, msg});
+  document.getElementById("msg").value = "";
+}
+
+// 投稿取得・表示
+db.collection("posts").onSnapshot(snapshot => {
+  let html = "";
+  snapshot.forEach(doc => {
+    const p = doc.data();
+    html += `
+      <div class="post">
+        <b>${p.name}</b><br>
+        ${p.msg}<br>
+        <button onclick="del('${doc.id}')">削除</button>
+      </div>
+    `;
+  });
+  document.getElementById("board").innerHTML = html;
+});
+
+// 投稿削除
+function del(id){
+  db.collection("posts").doc(id).delete();
+}
+</script>
+
+</body>
+</html>
