@@ -5,8 +5,8 @@
   <title>1等星</title>
   <style>
     body {
-      background-color: #001f3f; 
-      color: #ffffff;
+      background-color: #001f3f;
+      color: white;
       font-family: sans-serif;
       padding: 20px;
     }
@@ -53,11 +53,11 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, doc, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// Firebase 設定
+// Firebase 設定（コンソールからコピーした内容）
 const firebaseConfig = {
   apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
   authDomain: "tousei-a9858.firebaseapp.com",
@@ -88,7 +88,7 @@ window.login = async function() {
   }
 };
 
-// 認証状態を監視
+// 認証状態監視
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
 });
@@ -118,8 +118,8 @@ window.deletePost = async function(docId, uid) {
   }
 };
 
-// --- リアルタイム表示 ---
-const postsQuery = query(collection(db, "posts"), orderBy("name")); // 名前順に表示
+// --- リアルタイム投稿表示 ---
+const postsQuery = query(collection(db, "posts"), orderBy("name"));
 onSnapshot(postsQuery, (snapshot) => {
   const postsDiv = document.getElementById("posts");
   postsDiv.innerHTML = "";
