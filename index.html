@@ -5,8 +5,8 @@
   <title>1等星</title>
   <style>
     body {
-      background-color: #001f3f; /* ネイビーブルー */
-      color: #ffffff; /* 文字色は白 */
+      background-color: #001f3f; 
+      color: #ffffff;
       font-family: sans-serif;
       padding: 20px;
     }
@@ -25,9 +25,7 @@
       color: white;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #005fa3;
-    }
+    button:hover { background-color: #005fa3; }
     #posts p {
       border-bottom: 1px solid #444;
       padding: 5px 0;
@@ -36,30 +34,30 @@
       margin-left: 10px;
       background-color: #FF4136;
     }
-    #posts button:hover {
-      background-color: #c11f1f;
-    }
+    #posts button:hover { background-color: #c11f1f; }
+    #loginBtn { background-color: #DB4437; }
+    #loginBtn:hover { background-color: #a33228; }
   </style>
 </head>
 <body>
 
 <h1>1等星</h1>
 
-<!-- 投稿フォーム -->
+<button id="loginBtn" onclick="login()">Googleでログイン</button><br><br>
+
 <input id="name" placeholder="名前"><br>
 <textarea id="text" placeholder="投稿"></textarea><br>
 <button onclick="send()">投稿</button>
 
-<!-- 投稿一覧表示 -->
 <div id="posts"></div>
 
-<!-- Firebase SDK (ES Modules) -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// Firebase 設定（コピー済み）
+// Firebase 設定
 const firebaseConfig = {
   apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
   authDomain: "tousei-a9858.firebaseapp.com",
@@ -74,39 +72,65 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// 投稿関数
+let currentUser = null;
+
+// --- ログイン ---
+window.login = async function() {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    currentUser = result.user;
+    alert("ログインしました: " + currentUser.displayName);
+  } catch (error) {
+    alert("ログインに失敗しました: " + error.message);
+  }
+};
+
+// --- 認証状態監視 ---
+onAuthStateChanged(auth, (user) => {
+  currentUser = user;
+});
+
+// --- 投稿 ---
 window.send = async function() {
-  const name = document.getElementById("name").value;
-  const text = document.getElementById("text").value;
-  if (!name || !text) {
-    alert("名前と投稿を入力してください");
+  if (!currentUser) {
+    alert("ログインしてください");
     return;
   }
+  const name = document.getElementById("name").value || currentUser.displayName;
+  const text = document.getElementById("text").value;
+  if (!text) { alert("投稿内容を入力してください"); return; }
   try {
-    await addDoc(collection(db, "posts"), { name, text });
-    document.getElementById("name").value = "";
+    await addDoc(collection(db, "posts"), {
+      name: name,
+      text: text,
+      uid: currentUser.uid
+    });
     document.getElementById("text").value = "";
-    alert("投稿しました");
     load();
   } catch (error) {
     alert("投稿に失敗しました: " + error.message);
   }
 };
 
-// 削除関数
-window.deletePost = async function(docId) {
+// --- 削除 ---
+window.deletePost = async function(docId, uid) {
+  if (!currentUser || currentUser.uid !== uid) {
+    alert("自分の投稿しか削除できません");
+    return;
+  }
   if (!confirm("本当に削除しますか？")) return;
   try {
     await deleteDoc(doc(db, "posts", docId));
-    alert("削除しました");
     load();
   } catch (error) {
     alert("削除に失敗しました: " + error.message);
   }
 };
 
-// 投稿一覧読み込み
+// --- 投稿一覧 ---
 window.load = async function() {
   const postsDiv = document.getElementById("posts");
   postsDiv.innerHTML = "";
@@ -116,13 +140,15 @@ window.load = async function() {
     postsDiv.innerHTML += `
       <p>
         <b>${data.name}</b> : ${data.text}
-        <button onclick="deletePost('${docSnap.id}')">削除</button>
+        ${currentUser && currentUser.uid === data.uid 
+          ? `<button onclick="deletePost('${docSnap.id}', '${data.uid}')">削除</button>` 
+          : ""}
       </p>
     `;
   });
 };
 
-// ページ読み込み時に一覧表示
+// 初回表示
 load();
 </script>
 
