@@ -16,6 +16,11 @@
 
 <h1>1等星</h1>
 
+<button id="loginBtn">Googleでログイン</button>
+<button id="logoutBtn" style="display:none;">ログアウト</button>
+
+<br><br>
+
 <input id="name" placeholder="名前"><br>
 <textarea id="text" placeholder="投稿"></textarea><br>
 <button id="postBtn">投稿</button>
@@ -24,7 +29,14 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { 
+  getFirestore, collection, addDoc, deleteDoc, doc, 
+  onSnapshot, query, orderBy, serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import { 
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Firebase 設定
 const firebaseConfig = {
@@ -37,67 +49,95 @@ const firebaseConfig = {
   measurementId: "G-6MP9F75G8X"
 };
 
-// Firebase 初期化
+// 初期化
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth();
+const provider = new GoogleAuthProvider();
 
-// 投稿ボタン
-const postBtn = document.getElementById("postBtn");
-postBtn.addEventListener("click", send);
+// ログイン
+document.getElementById("loginBtn").onclick = () => {
+  signInWithPopup(auth, provider);
+};
 
-// 投稿関数
+// ログアウト
+document.getElementById("logoutBtn").onclick = () => {
+  signOut(auth);
+};
+
+// 投稿
+document.getElementById("postBtn").onclick = send;
+
 async function send() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("ログインしてください");
+    return;
+  }
+
   const name = document.getElementById("name").value.trim();
   const text = document.getElementById("text").value.trim();
+
   if (!name || !text) {
     alert("名前と投稿を入力してください");
     return;
   }
-  try {
-    await addDoc(collection(db, "posts"), { name, text });
-    document.getElementById("name").value = "";
-    document.getElementById("text").value = "";
-    load();
-  } catch (e) {
-    alert("投稿に失敗しました");
-    console.error(e);
-  }
+
+  await addDoc(collection(db, "posts"), {
+    uid: user.uid,
+    name,
+    text,
+    createdAt: serverTimestamp()
+  });
+
+  document.getElementById("name").value = "";
+  document.getElementById("text").value = "";
 }
 
-// 削除関数
-async function removePost(postId) {
-  try {
-    await deleteDoc(doc(db, "posts", postId));
-    load();
-  } catch (e) {
-    alert("削除に失敗しました");
-    console.error(e);
-  }
+// 削除
+async function removePost(id) {
+  await deleteDoc(doc(db, "posts", id));
 }
 
-// 投稿一覧表示
-async function load() {
+// リアルタイム表示
+function load() {
   const postsDiv = document.getElementById("posts");
-  postsDiv.innerHTML = "";
-  const querySnapshot = await getDocs(collection(db, "posts"));
-  querySnapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    const id = docSnap.id;
-    const postHTML = document.createElement("div");
-    postHTML.className = "post";
-    postHTML.textContent = `${data.name} : ${data.text}`;
+  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
 
-    const btn = document.createElement("button");
-    btn.className = "delete-btn";
-    btn.textContent = "削除";
-    btn.addEventListener("click", () => removePost(id));
+  onSnapshot(q, (snapshot) => {
+    postsDiv.innerHTML = "";
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const id = docSnap.id;
 
-    postHTML.appendChild(btn);
-    postsDiv.appendChild(postHTML);
+      const div = document.createElement("div");
+      div.className = "post";
+      div.textContent = `${data.name} : ${data.text}`;
+
+      if (auth.currentUser && auth.currentUser.uid === data.uid) {
+        const btn = document.createElement("button");
+        btn.className = "delete-btn";
+        btn.textContent = "削除";
+        btn.onclick = () => removePost(id);
+        div.appendChild(btn);
+      }
+
+      postsDiv.appendChild(div);
+    });
   });
 }
 
-// 初期表示
+// ログイン状態監視
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    document.getElementById("loginBtn").style.display = "none";
+    document.getElementById("logoutBtn").style.display = "inline-block";
+  } else {
+    document.getElementById("loginBtn").style.display = "inline-block";
+    document.getElementById("logoutBtn").style.display = "none";
+  }
+});
+
 load();
 </script>
 
