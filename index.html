@@ -4,9 +4,12 @@
   <meta charset="UTF-8">
   <title>1等星</title>
   <style>
-    body { background-color: navy; color: white; font-family: sans-serif; }
-    input, textarea, button { margin: 5px 0; }
+    body { background-color: navy; color: white; font-family: sans-serif; padding: 20px; }
+    input, textarea, button { margin: 5px 0; padding: 5px; width: 300px; }
+    button { cursor: pointer; }
     #posts { margin-top: 20px; }
+    .post { margin-bottom: 10px; }
+    .delete-btn { margin-left: 10px; background-color: red; color: white; border: none; padding: 2px 5px; }
   </style>
 </head>
 <body>
@@ -21,7 +24,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase 設定
 const firebaseConfig = {
@@ -57,18 +60,34 @@ async function send() {
   }
 }
 
+// 削除関数
+async function removePost(postId) {
+  try {
+    await deleteDoc(doc(db, "posts", postId));
+    load();
+  } catch (e) {
+    alert("削除に失敗しました");
+    console.error(e);
+  }
+}
+
 // 投稿一覧を読み込む
 async function load() {
   const postsDiv = document.getElementById("posts");
   postsDiv.innerHTML = "";
   const querySnapshot = await getDocs(collection(db, "posts"));
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    postsDiv.innerHTML += `<p><b>${data.name}</b> : ${data.text}</p>`;
+  querySnapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    const id = docSnap.id;
+    const postHTML = document.createElement("div");
+    postHTML.className = "post";
+    postHTML.innerHTML = `<b>${data.name}</b> : ${data.text} 
+      <button class="delete-btn" onclick="removePost('${id}')">削除</button>`;
+    postsDiv.appendChild(postHTML);
   });
 }
 
-// ページ読み込み時に表示
+// ページ読み込み時に投稿を表示
 load();
 </script>
 
