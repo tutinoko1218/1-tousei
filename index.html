@@ -53,7 +53,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, doc, deleteDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
@@ -77,7 +77,7 @@ const provider = new GoogleAuthProvider();
 
 let currentUser = null;
 
-// --- ログイン ---
+// --- Googleログイン ---
 window.login = async function() {
   try {
     const result = await signInWithPopup(auth, provider);
@@ -88,28 +88,20 @@ window.login = async function() {
   }
 };
 
-// --- 認証状態監視 ---
+// 認証状態を監視
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
 });
 
 // --- 投稿 ---
 window.send = async function() {
-  if (!currentUser) {
-    alert("ログインしてください");
-    return;
-  }
+  if (!currentUser) { alert("ログインしてください"); return; }
   const name = document.getElementById("name").value || currentUser.displayName;
   const text = document.getElementById("text").value;
   if (!text) { alert("投稿内容を入力してください"); return; }
   try {
-    await addDoc(collection(db, "posts"), {
-      name: name,
-      text: text,
-      uid: currentUser.uid
-    });
+    await addDoc(collection(db, "posts"), { name, text, uid: currentUser.uid });
     document.getElementById("text").value = "";
-    load();
   } catch (error) {
     alert("投稿に失敗しました: " + error.message);
   }
@@ -117,39 +109,31 @@ window.send = async function() {
 
 // --- 削除 ---
 window.deletePost = async function(docId, uid) {
-  if (!currentUser || currentUser.uid !== uid) {
-    alert("自分の投稿しか削除できません");
-    return;
-  }
+  if (!currentUser || currentUser.uid !== uid) { alert("自分の投稿しか削除できません"); return; }
   if (!confirm("本当に削除しますか？")) return;
   try {
     await deleteDoc(doc(db, "posts", docId));
-    load();
   } catch (error) {
     alert("削除に失敗しました: " + error.message);
   }
 };
 
-// --- 投稿一覧 ---
-window.load = async function() {
+// --- リアルタイム表示 ---
+const postsQuery = query(collection(db, "posts"), orderBy("name")); // 名前順に表示
+onSnapshot(postsQuery, (snapshot) => {
   const postsDiv = document.getElementById("posts");
   postsDiv.innerHTML = "";
-  const querySnapshot = await getDocs(collection(db, "posts"));
-  querySnapshot.forEach((docSnap) => {
+  snapshot.forEach((docSnap) => {
     const data = docSnap.data();
     postsDiv.innerHTML += `
       <p>
         <b>${data.name}</b> : ${data.text}
-        ${currentUser && currentUser.uid === data.uid 
-          ? `<button onclick="deletePost('${docSnap.id}', '${data.uid}')">削除</button>` 
-          : ""}
+        ${currentUser && currentUser.uid === data.uid ? 
+          `<button onclick="deletePost('${docSnap.id}','${data.uid}')">削除</button>` : ""}
       </p>
     `;
   });
-};
-
-// 初回表示
-load();
+});
 </script>
 
 </body>
