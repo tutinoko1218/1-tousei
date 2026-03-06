@@ -1,49 +1,17 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
   <meta charset="UTF-8">
   <title>1等星</title>
   <style>
-    body {
-      background-color: #001f3f;
-      color: white;
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    input, textarea {
-      width: 300px;
-      padding: 5px;
-      margin-bottom: 10px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-    button {
-      padding: 5px 10px;
-      border: none;
-      border-radius: 4px;
-      background-color: #0074D9;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover { background-color: #005fa3; }
-    #posts p {
-      border-bottom: 1px solid #444;
-      padding: 5px 0;
-    }
-    #posts button {
-      margin-left: 10px;
-      background-color: #FF4136;
-    }
-    #posts button:hover { background-color: #c11f1f; }
-    #loginBtn { background-color: #DB4437; }
-    #loginBtn:hover { background-color: #a33228; }
+    body { background-color: navy; color: white; font-family: sans-serif; }
+    input, textarea, button { margin: 5px 0; }
+    #posts { margin-top: 20px; }
   </style>
 </head>
 <body>
 
 <h1>1等星</h1>
-
-<button id="loginBtn" onclick="login()">Googleでログイン</button><br><br>
 
 <input id="name" placeholder="名前"><br>
 <textarea id="text" placeholder="投稿"></textarea><br>
@@ -52,99 +20,56 @@
 <div id="posts"></div>
 
 <script type="module">
-  // -----------------------------
-  // SDKインポート（ここに入れる）
-  // -----------------------------
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  // -----------------------------
-  // Firebase 設定
-  // -----------------------------
-  const firebaseConfig = {
-    apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
-    authDomain: "tousei-a9858.firebaseapp.com",
-    projectId: "tousei-a9858",
-    storageBucket: "tousei-a9858.appspot.com",
-    messagingSenderId: "967253767952",
-    appId: "1:967253767952:web:f4eeaed56aa2e737df9795",
-    measurementId: "G-6MP9F75G8X"
-  };
+// Firebase 設定
+const firebaseConfig = {
+  apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
+  authDomain: "tousei-a9858.firebaseapp.com",
+  projectId: "tousei-a9858",
+  storageBucket: "tousei-a9858.appspot.com",
+  messagingSenderId: "967253767952",
+  appId: "1:967253767952:web:f4eeaed56aa2e737df9795",
+  measurementId: "G-6MP9F75G8X"
+};
 
-  // -----------------------------
-  // Firebase 初期化
-  // -----------------------------
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  const provider = new GoogleAuthProvider();
-  let currentUser = null;
+// Firebase 初期化
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-  // -----------------------------
-  // Googleログイン
-  // -----------------------------
-  window.login = async function() {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      currentUser = result.user;
-      alert("ログインしました: " + currentUser.displayName);
-    } catch (error) {
-      alert("ログインに失敗しました: " + error.message);
-    }
-  };
+// 投稿関数
+async function send() {
+  const name = document.getElementById("name").value.trim();
+  const text = document.getElementById("text").value.trim();
+  if (!name || !text) {
+    alert("名前と投稿を入力してください");
+    return;
+  }
+  try {
+    await addDoc(collection(db, "posts"), { name, text });
+    document.getElementById("name").value = "";
+    document.getElementById("text").value = "";
+    load();
+  } catch (e) {
+    alert("投稿に失敗しました");
+    console.error(e);
+  }
+}
 
-  onAuthStateChanged(auth, (user) => { currentUser = user; });
-
-  // -----------------------------
-  // 投稿
-  // -----------------------------
-  window.send = async function() {
-    if (!currentUser) { alert("ログインしてください"); return; }
-    const name = document.getElementById("name").value || currentUser.displayName;
-    const text = document.getElementById("text").value;
-    if (!text) { alert("投稿内容を入力してください"); return; }
-    try {
-      await addDoc(collection(db, "posts"), { name, text, uid: currentUser.uid });
-      document.getElementById("text").value = "";
-    } catch (error) {
-      alert("投稿に失敗しました: " + error.message);
-    }
-  };
-
-  // -----------------------------
-  // 削除
-  // -----------------------------
-  window.deletePost = async function(docId, uid) {
-    if (!currentUser || currentUser.uid !== uid) { alert("自分の投稿しか削除できません"); return; }
-    if (!confirm("本当に削除しますか？")) return;
-    try {
-      await deleteDoc(doc(db, "posts", docId));
-    } catch (error) {
-      alert("削除に失敗しました: " + error.message);
-    }
-  };
-
-  // -----------------------------
-  // リアルタイム投稿表示
-  // -----------------------------
-  const postsQuery = query(collection(db, "posts"), orderBy("name"));
-  onSnapshot(postsQuery, (snapshot) => {
-    const postsDiv = document.getElementById("posts");
-    postsDiv.innerHTML = "";
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      postsDiv.innerHTML += `
-        <p>
-          <b>${data.name}</b> : ${data.text}
-          ${currentUser && currentUser.uid === data.uid ? 
-            `<button onclick="deletePost('${docSnap.id}','${data.uid}')">削除</button>` : ""}
-        </p>
-      `;
-    });
+// 投稿一覧を読み込む
+async function load() {
+  const postsDiv = document.getElementById("posts");
+  postsDiv.innerHTML = "";
+  const querySnapshot = await getDocs(collection(db, "posts"));
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    postsDiv.innerHTML += `<p><b>${data.name}</b> : ${data.text}</p>`;
   });
+}
+
+// ページ読み込み時に表示
+load();
 </script>
 
 </body>
