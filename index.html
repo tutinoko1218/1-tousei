@@ -18,7 +18,7 @@
 
 <input id="name" placeholder="名前"><br>
 <textarea id="text" placeholder="投稿"></textarea><br>
-<button onclick="send()">投稿</button>
+<button id="postBtn">投稿</button>
 
 <div id="posts"></div>
 
@@ -40,6 +40,10 @@ const firebaseConfig = {
 // Firebase 初期化
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// 投稿ボタン
+const postBtn = document.getElementById("postBtn");
+postBtn.addEventListener("click", send);
 
 // 投稿関数
 async function send() {
@@ -71,7 +75,7 @@ async function removePost(postId) {
   }
 }
 
-// 投稿一覧を読み込む
+// 投稿一覧表示
 async function load() {
   const postsDiv = document.getElementById("posts");
   postsDiv.innerHTML = "";
@@ -81,13 +85,19 @@ async function load() {
     const id = docSnap.id;
     const postHTML = document.createElement("div");
     postHTML.className = "post";
-    postHTML.innerHTML = `<b>${data.name}</b> : ${data.text} 
-      <button class="delete-btn" onclick="removePost('${id}')">削除</button>`;
+    postHTML.textContent = `${data.name} : ${data.text}`;
+
+    const btn = document.createElement("button");
+    btn.className = "delete-btn";
+    btn.textContent = "削除";
+    btn.addEventListener("click", () => removePost(id));
+
+    postHTML.appendChild(btn);
     postsDiv.appendChild(postHTML);
   });
 }
 
-// ページ読み込み時に投稿を表示
+// 初期表示
 load();
 </script>
 
