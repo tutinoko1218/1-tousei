@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <title>掲示板</title>
@@ -8,60 +8,67 @@
 
 <h1>掲示板</h1>
 
+<!-- 投稿フォーム -->
 <input id="name" placeholder="名前"><br><br>
 <textarea id="text" placeholder="投稿"></textarea><br><br>
 <button onclick="send()">投稿</button>
 
+<!-- 投稿一覧表示 -->
 <div id="posts"></div>
 
-<!-- Firebaseの初期化 -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<!-- Firebase SDK (互換版で module 問題回避) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 
-// Firebase設定（コンソールからコピーした内容を整理）
-const firebaseConfig = {
-  apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
-  authDomain: "tousei-a9858.firebaseapp.com",
-  projectId: "tousei-a9858",
-  storageBucket: "tousei-a9858.appspot.com",
-  messagingSenderId: "967253767952",
-  appId: "1:967253767952:web:f4eeaed56aa2e737df9795",
-  measurementId: "G-6MP9F75G8X"
-};
+<script>
+  // Firebase 設定（あなたのプロジェクト用）
+  const firebaseConfig = {
+    apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
+    authDomain: "tousei-a9858.firebaseapp.com",
+    projectId: "tousei-a9858",
+    storageBucket: "tousei-a9858.appspot.com",
+    messagingSenderId: "967253767952",
+    appId: "1:967253767952:web:f4eeaed56aa2e737df9795"
+  };
 
-// Firebase初期化（1回だけ）
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+  // Firebase 初期化
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-// 投稿関数
-async function send() {
-  const name = document.getElementById("name").value;
-  const text = document.getElementById("text").value;
-  if (name === "" || text === "") {
-    alert("名前と投稿を入力してください");
-    return;
+  // 投稿関数（グローバル）
+  function send() {
+    const name = document.getElementById("name").value;
+    const text = document.getElementById("text").value;
+    if (!name || !text) {
+      alert("名前と投稿を入力してください");
+      return;
+    }
+    db.collection("posts").add({ name, text })
+      .then(() => {
+        document.getElementById("name").value = "";
+        document.getElementById("text").value = "";
+        alert("投稿しました");
+        load();
+      })
+      .catch((error) => {
+        alert("投稿に失敗しました: " + error.message);
+      });
   }
-  await addDoc(collection(db, "posts"), { name, text });
-  document.getElementById("name").value = "";
-  document.getElementById("text").value = "";
-  alert("投稿しました");
+
+  // 投稿一覧を読み込む関数（グローバル）
+  function load() {
+    const postsDiv = document.getElementById("posts");
+    postsDiv.innerHTML = "";
+    db.collection("posts").get().then((querySnapshot) => {
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        postsDiv.innerHTML += "<p><b>" + data.name + "</b> : " + data.text + "</p>";
+      });
+    });
+  }
+
+  // ページ読み込み時に投稿一覧表示
   load();
-}
-
-// 投稿一覧を読み込む
-async function load() {
-  document.getElementById("posts").innerHTML = "";
-  const querySnapshot = await getDocs(collection(db, "posts"));
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    document.getElementById("posts").innerHTML +=
-      "<p><b>" + data.name + "</b> : " + data.text + "</p>";
-  });
-}
-
-// ページ読み込み時に投稿を表示
-load();
 </script>
 
 </body>
