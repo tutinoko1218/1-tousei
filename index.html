@@ -2,15 +2,52 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>掲示板</title>
+  <title>1等星</title>
+  <style>
+    body {
+      background-color: #001f3f; /* ネイビーブルー */
+      color: #ffffff; /* 文字色は白 */
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    input, textarea {
+      width: 300px;
+      padding: 5px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      background-color: #0074D9;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    #posts p {
+      border-bottom: 1px solid #444;
+      padding: 5px 0;
+    }
+    #posts button {
+      margin-left: 10px;
+      background-color: #FF4136;
+    }
+    #posts button:hover {
+      background-color: #c11f1f;
+    }
+  </style>
 </head>
 <body>
 
-<h1>掲示板</h1>
+<h1>1等星</h1>
 
 <!-- 投稿フォーム -->
-<input id="name" placeholder="名前"><br><br>
-<textarea id="text" placeholder="投稿"></textarea><br><br>
+<input id="name" placeholder="名前"><br>
+<textarea id="text" placeholder="投稿"></textarea><br>
 <button onclick="send()">投稿</button>
 
 <!-- 投稿一覧表示 -->
@@ -19,10 +56,10 @@
 <!-- Firebase SDK (ES Modules) -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
-// --- Firebase 設定（コピー済み、重複なし） ---
+// Firebase 設定（コピー済み）
 const firebaseConfig = {
   apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
   authDomain: "tousei-a9858.firebaseapp.com",
@@ -38,7 +75,7 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getFirestore(app);
 
-// 投稿関数をグローバル化
+// 投稿関数
 window.send = async function() {
   const name = document.getElementById("name").value;
   const text = document.getElementById("text").value;
@@ -46,21 +83,42 @@ window.send = async function() {
     alert("名前と投稿を入力してください");
     return;
   }
-  await addDoc(collection(db, "posts"), { name, text });
-  document.getElementById("name").value = "";
-  document.getElementById("text").value = "";
-  alert("投稿しました");
-  load();
+  try {
+    await addDoc(collection(db, "posts"), { name, text });
+    document.getElementById("name").value = "";
+    document.getElementById("text").value = "";
+    alert("投稿しました");
+    load();
+  } catch (error) {
+    alert("投稿に失敗しました: " + error.message);
+  }
 };
 
-// 投稿一覧を読み込む関数をグローバル化
+// 削除関数
+window.deletePost = async function(docId) {
+  if (!confirm("本当に削除しますか？")) return;
+  try {
+    await deleteDoc(doc(db, "posts", docId));
+    alert("削除しました");
+    load();
+  } catch (error) {
+    alert("削除に失敗しました: " + error.message);
+  }
+};
+
+// 投稿一覧読み込み
 window.load = async function() {
   const postsDiv = document.getElementById("posts");
   postsDiv.innerHTML = "";
   const querySnapshot = await getDocs(collection(db, "posts"));
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    postsDiv.innerHTML += `<p><b>${data.name}</b> : ${data.text}</p>`;
+  querySnapshot.forEach((docSnap) => {
+    const data = docSnap.data();
+    postsDiv.innerHTML += `
+      <p>
+        <b>${data.name}</b> : ${data.text}
+        <button onclick="deletePost('${docSnap.id}')">削除</button>
+      </p>
+    `;
   });
 };
 
