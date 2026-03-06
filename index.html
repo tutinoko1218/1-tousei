@@ -52,88 +52,99 @@
 <div id="posts"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  // -----------------------------
+  // SDKインポート（ここに入れる）
+  // -----------------------------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 
-// Firebase 設定
-const firebaseConfig = {
-  apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
-  authDomain: "tousei-a9858.firebaseapp.com",
-  projectId: "tousei-a9858",
-  storageBucket: "tousei-a9858.appspot.com",
-  messagingSenderId: "967253767952",
-  appId: "1:967253767952:web:f4eeaed56aa2e737df9795",
-  measurementId: "G-6MP9F75G8X"
-};
+  // -----------------------------
+  // Firebase 設定
+  // -----------------------------
+  const firebaseConfig = {
+    apiKey: "AIzaSyBc6lKCrivuqFbSwAApwsWW9nuhwyqqrAE",
+    authDomain: "tousei-a9858.firebaseapp.com",
+    projectId: "tousei-a9858",
+    storageBucket: "tousei-a9858.appspot.com",
+    messagingSenderId: "967253767952",
+    appId: "1:967253767952:web:f4eeaed56aa2e737df9795",
+    measurementId: "G-6MP9F75G8X"
+  };
 
-// Firebase 初期化
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+  // -----------------------------
+  // Firebase 初期化
+  // -----------------------------
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+  let currentUser = null;
 
-let currentUser = null;
+  // -----------------------------
+  // Googleログイン
+  // -----------------------------
+  window.login = async function() {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      currentUser = result.user;
+      alert("ログインしました: " + currentUser.displayName);
+    } catch (error) {
+      alert("ログインに失敗しました: " + error.message);
+    }
+  };
 
-// --- Googleログイン ---
-window.login = async function() {
-  try {
-    const result = await signInWithPopup(auth, provider);
-    currentUser = result.user;
-    alert("ログインしました: " + currentUser.displayName);
-  } catch (error) {
-    alert("ログインに失敗しました: " + error.message);
-  }
-};
+  onAuthStateChanged(auth, (user) => { currentUser = user; });
 
-// 認証状態監視
-onAuthStateChanged(auth, (user) => {
-  currentUser = user;
-});
+  // -----------------------------
+  // 投稿
+  // -----------------------------
+  window.send = async function() {
+    if (!currentUser) { alert("ログインしてください"); return; }
+    const name = document.getElementById("name").value || currentUser.displayName;
+    const text = document.getElementById("text").value;
+    if (!text) { alert("投稿内容を入力してください"); return; }
+    try {
+      await addDoc(collection(db, "posts"), { name, text, uid: currentUser.uid });
+      document.getElementById("text").value = "";
+    } catch (error) {
+      alert("投稿に失敗しました: " + error.message);
+    }
+  };
 
-// --- 投稿 ---
-window.send = async function() {
-  if (!currentUser) { alert("ログインしてください"); return; }
-  const name = document.getElementById("name").value || currentUser.displayName;
-  const text = document.getElementById("text").value;
-  if (!text) { alert("投稿内容を入力してください"); return; }
-  try {
-    await addDoc(collection(db, "posts"), { name, text, uid: currentUser.uid });
-    document.getElementById("text").value = "";
-  } catch (error) {
-    alert("投稿に失敗しました: " + error.message);
-  }
-};
+  // -----------------------------
+  // 削除
+  // -----------------------------
+  window.deletePost = async function(docId, uid) {
+    if (!currentUser || currentUser.uid !== uid) { alert("自分の投稿しか削除できません"); return; }
+    if (!confirm("本当に削除しますか？")) return;
+    try {
+      await deleteDoc(doc(db, "posts", docId));
+    } catch (error) {
+      alert("削除に失敗しました: " + error.message);
+    }
+  };
 
-// --- 削除 ---
-window.deletePost = async function(docId, uid) {
-  if (!currentUser || currentUser.uid !== uid) { alert("自分の投稿しか削除できません"); return; }
-  if (!confirm("本当に削除しますか？")) return;
-  try {
-    await deleteDoc(doc(db, "posts", docId));
-  } catch (error) {
-    alert("削除に失敗しました: " + error.message);
-  }
-};
-
-// --- リアルタイム投稿表示 ---
-const postsQuery = query(collection(db, "posts"), orderBy("name"));
-onSnapshot(postsQuery, (snapshot) => {
-  const postsDiv = document.getElementById("posts");
-  postsDiv.innerHTML = "";
-  snapshot.forEach((docSnap) => {
-    const data = docSnap.data();
-    postsDiv.innerHTML += `
-      <p>
-        <b>${data.name}</b> : ${data.text}
-        ${currentUser && currentUser.uid === data.uid ? 
-          `<button onclick="deletePost('${docSnap.id}','${data.uid}')">削除</button>` : ""}
-      </p>
-    `;
+  // -----------------------------
+  // リアルタイム投稿表示
+  // -----------------------------
+  const postsQuery = query(collection(db, "posts"), orderBy("name"));
+  onSnapshot(postsQuery, (snapshot) => {
+    const postsDiv = document.getElementById("posts");
+    postsDiv.innerHTML = "";
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      postsDiv.innerHTML += `
+        <p>
+          <b>${data.name}</b> : ${data.text}
+          ${currentUser && currentUser.uid === data.uid ? 
+            `<button onclick="deletePost('${docSnap.id}','${data.uid}')">削除</button>` : ""}
+        </p>
+      `;
+    });
   });
-});
 </script>
 
 </body>
