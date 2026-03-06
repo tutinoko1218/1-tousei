@@ -4,12 +4,51 @@
   <meta charset="UTF-8">
   <title>1等星</title>
   <style>
-    body { background-color: navy; color: white; font-family: sans-serif; padding: 20px; }
-    input, textarea, button { margin: 5px 0; padding: 5px; width: 300px; }
+    body { 
+      background-color: navy; 
+      color: white; 
+      font-family: sans-serif; 
+      padding: 20px; 
+      margin: 0;
+    }
+    input, textarea, button { 
+      margin: 5px 0; 
+      padding: 10px; 
+      width: 100%; 
+      max-width: 400px; 
+      box-sizing: border-box;
+    }
     button { cursor: pointer; }
     #posts { margin-top: 20px; }
-    .post { margin-bottom: 10px; }
-    .delete-btn { margin-left: 10px; background-color: red; color: white; border: none; padding: 2px 5px; }
+    .post { 
+      margin-bottom: 10px; 
+      padding: 10px; 
+      background-color: #001f4d; 
+      border-radius: 5px; 
+    }
+    .post-name { 
+      font-size: 0.9em; 
+      color: #ccc; 
+      display: block;
+    }
+    .post-text { 
+      font-size: 1.2em; 
+      margin-top: 2px;
+    }
+    .delete-btn { 
+      margin-top: 5px;
+      background-color: red; 
+      color: white; 
+      border: none; 
+      padding: 2px 5px; 
+      cursor: pointer;
+      border-radius: 3px;
+    }
+
+    /* レスポンシブ対応 */
+    @media(max-width: 480px){
+      input, textarea, button { width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -24,7 +63,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // Firebase 設定
 const firebaseConfig = {
@@ -53,10 +92,13 @@ async function send() {
     return;
   }
   try {
-    await addDoc(collection(db, "posts"), { name, text });
+    await addDoc(collection(db, "posts"), { 
+      name, 
+      text,
+      timestamp: serverTimestamp() 
+    });
     document.getElementById("name").value = "";
     document.getElementById("text").value = "";
-    load();
   } catch (e) {
     alert("投稿に失敗しました");
     console.error(e);
@@ -67,38 +109,43 @@ async function send() {
 async function removePost(postId) {
   try {
     await deleteDoc(doc(db, "posts", postId));
-    load();
   } catch (e) {
     alert("削除に失敗しました");
     console.error(e);
   }
 }
 
-// 投稿一覧表示
-async function load() {
-  const postsDiv = document.getElementById("posts");
+// リアルタイム更新
+const postsDiv = document.getElementById("posts");
+const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+onSnapshot(q, (snapshot) => {
   postsDiv.innerHTML = "";
-  const querySnapshot = await getDocs(collection(db, "posts"));
-  querySnapshot.forEach((docSnap) => {
+  snapshot.forEach(docSnap => {
     const data = docSnap.data();
     const id = docSnap.id;
 
     const postHTML = document.createElement("div");
     postHTML.className = "post";
-    postHTML.textContent = `${data.name} : ${data.text}`;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "post-name";
+    nameSpan.textContent = data.name;
+
+    const textSpan = document.createElement("span");
+    textSpan.className = "post-text";
+    textSpan.textContent = data.text;
 
     const btn = document.createElement("button");
     btn.className = "delete-btn";
     btn.textContent = "削除";
     btn.addEventListener("click", () => removePost(id));
 
+    postHTML.appendChild(nameSpan);
+    postHTML.appendChild(textSpan);
     postHTML.appendChild(btn);
     postsDiv.appendChild(postHTML);
   });
-}
-
-// 初期表示
-load();
+});
 </script>
 
 </body>
